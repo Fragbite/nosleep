@@ -11,6 +11,7 @@
                     IconSource="pack://application:,,,/NoSleep;component/icon.ico">
         <tb:TaskbarIcon.ContextMenu>
             <ContextMenu Background="WhiteSmoke">
+                <MenuItem Header="Suspend" Click="Toggle_Click" />
                 <MenuItem Header="Stats" Click="ShowStats_Click" />
                 <MenuItem Header="Exit" Click="ExitApplication_Click" />
             </ContextMenu>

@@ -30,6 +30,7 @@ namespace NoSleep
         GlobalMouseHook _globalMouseHook { get; set; }
         int _inactivityTimeout = 90;
         int _savedTimeCounter = 0;
+        bool _isSuspended = false;
 
         public MainWindow()
         {
@@ -114,6 +115,30 @@ namespace NoSleep
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
             StopApplication();
+        }
+
+        private void Toggle_Click(object sender, RoutedEventArgs e)
+        {
+            if (_isSuspended)
+            {
+                _inactivityTimer.Start();
+                _noSleepTimer.Start();
+                UpdateToggleMenuItem("Suspend");
+            }
+            else
+            {
+                _inactivityTimer.Stop();
+                _noSleepTimer.Stop();
+                UpdateToggleMenuItem("Resume");
+            }
+            _isSuspended = !_isSuspended;
+        }
+
+        private void UpdateToggleMenuItem(string header)
+        {
+            var firstItem = myNotifyIcon.ContextMenu.Items[0];
+            var menuItem = firstItem as MenuItem;
+            menuItem.Header = header;
         }
 
         private void ShowStats_Click(object sender, RoutedEventArgs e)
