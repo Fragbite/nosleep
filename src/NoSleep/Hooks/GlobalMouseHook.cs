@@ -1,4 +1,5 @@
-﻿using System;
+﻿using NoSleep.EventArgs;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -6,7 +7,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace NoSleep
+namespace NoSleep.Hooks
 {
     internal class GlobalMouseHook : IDisposable
     {
@@ -60,7 +61,7 @@ namespace NoSleep
             {
                 MSLLHOOKSTRUCT hookStruct = (MSLLHOOKSTRUCT)Marshal.PtrToStructure(lParam, typeof(MSLLHOOKSTRUCT));
                 
-                var eventArguments = new GlobalMouseHookEventArgs();
+                var eventArguments = new GlobalMouseHookEventArgs((MouseMessages)wParam);
 
                 EventHandler<GlobalMouseHookEventArgs> handler = MouseAction;
                 if (handler != null)
@@ -73,7 +74,7 @@ namespace NoSleep
 
         private const int WH_MOUSE_LL = 14;
 
-        private enum MouseMessages
+        public enum MouseMessages
         {
             WM_LBUTTONDOWN = 0x0201,
             WM_LBUTTONUP = 0x0202,

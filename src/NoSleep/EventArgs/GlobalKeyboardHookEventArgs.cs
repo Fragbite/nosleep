@@ -1,11 +1,12 @@
-﻿using System;
+﻿using NoSleep.Hooks;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace NoSleep
+namespace NoSleep.EventArgs
 {
     internal class GlobalKeyboardHookEventArgs : HandledEventArgs
     {

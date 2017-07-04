@@ -74,11 +74,11 @@
       <DependentUpon>App.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="GlobalMouseHookEventArgs.cs" />
-    <Compile Include="GlobalKeyboardHook.cs" />
-    <Compile Include="GlobalKeyboardHookEventArgs.cs" />
-    <Compile Include="GlobalMouseHook.cs" />
-    <Compile Include="KeyboardSimulator.cs" />
+    <Compile Include="EventArgs\GlobalMouseHookEventArgs.cs" />
+    <Compile Include="Hooks\GlobalKeyboardHook.cs" />
+    <Compile Include="EventArgs\GlobalKeyboardHookEventArgs.cs" />
+    <Compile Include="Hooks\GlobalMouseHook.cs" />
+    <Compile Include="Simulators\KeyboardSimulator.cs" />
     <Compile Include="MainWindow.xaml.cs">
       <DependentUpon>MainWindow.xaml</DependentUpon>
       <SubType>Code</SubType>

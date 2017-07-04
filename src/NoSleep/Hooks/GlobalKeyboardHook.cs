@@ -1,4 +1,5 @@
-﻿using System;
+﻿using NoSleep.EventArgs;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
@@ -7,7 +8,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace NoSleep
+namespace NoSleep.Hooks
 {
     internal class GlobalKeyboardHook : IDisposable
     {

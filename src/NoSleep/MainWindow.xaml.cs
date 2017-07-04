@@ -1,4 +1,7 @@
-﻿using System;
+﻿using NoSleep.EventArgs;
+using NoSleep.Hooks;
+using NoSleep.Simulators;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -25,8 +28,8 @@ namespace NoSleep
         Timer _noSleepTimer { get; set; }
         GlobalKeyboardHook _globalKeyboardHook { get; set; }
         GlobalMouseHook _globalMouseHook { get; set; }
-        int InactivityTimeout = 90;
-        int SavedTimeCounter = 0;
+        int _inactivityTimeout = 90;
+        int _savedTimeCounter = 0;
 
         public MainWindow()
         {
@@ -37,12 +40,12 @@ namespace NoSleep
         private void Init()
         {
             _inactivityTimer = new Timer();
-            _inactivityTimer.Interval = TimeSpan.FromSeconds(InactivityTimeout).TotalMilliseconds;
+            _inactivityTimer.Interval = TimeSpan.FromSeconds(_inactivityTimeout).TotalMilliseconds;
             _inactivityTimer.AutoReset = false;
             _inactivityTimer.Elapsed += InactivityTimer_Elapsed;
 
             _noSleepTimer = new Timer();
-            _noSleepTimer.Interval = TimeSpan.FromSeconds(InactivityTimeout).TotalMilliseconds;
+            _noSleepTimer.Interval = TimeSpan.FromSeconds(_inactivityTimeout).TotalMilliseconds;
             _noSleepTimer.AutoReset = true;
             _noSleepTimer.Elapsed += NoSleepTimer_Elapsed;
             
@@ -86,7 +89,7 @@ namespace NoSleep
 
         private void PreventSleep()
         {
-            SavedTimeCounter += InactivityTimeout;
+            _savedTimeCounter += _inactivityTimeout;
             KeyboardSimulator.SimulateKeypress();
         }
 
@@ -115,8 +118,8 @@ namespace NoSleep
 
         private void ShowStats_Click(object sender, RoutedEventArgs e)
         {
-            var msg = "I've just saved you from {0} minutes o work!";
-            MessageBox.Show(string.Format(msg, (int)TimeSpan.FromSeconds(SavedTimeCounter).TotalMinutes), "WOW!", MessageBoxButton.OK);
+            var msg = "I've just saved you from {0} minutes of work!";
+            MessageBox.Show(string.Format(msg, (int)TimeSpan.FromSeconds(_savedTimeCounter).TotalMinutes), "WOW!", MessageBoxButton.OK);
         }
 
         private void ExitApplication_Click(object sender, RoutedEventArgs e)
