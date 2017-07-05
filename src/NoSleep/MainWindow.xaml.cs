@@ -1,6 +1,6 @@
-﻿using NoSleep.EventArgs;
-using NoSleep.Hooks;
-using NoSleep.Simulators;
+﻿using NoSleep.Core.EventArgs;
+using NoSleep.Core.Hooks;
+using NoSleep.Core.Simulators;
 using System;
 using System.Collections.Generic;
 using System.Linq;
