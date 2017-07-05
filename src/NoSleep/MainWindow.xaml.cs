@@ -184,8 +184,23 @@ namespace NoSleep
 
         private void ShowStats_Click(object sender, RoutedEventArgs e)
         {
+            Window window = new Window()
+            {
+                WindowStyle = WindowStyle.None,
+                WindowState = System.Windows.WindowState.Maximized,
+                Background = System.Windows.Media.Brushes.Transparent,
+                AllowsTransparency = true,
+                ShowInTaskbar = false,
+                ShowActivated = true,
+                Topmost = true
+            };
+
+            window.Show();
+
             var msg = "I've just saved you from {0} minutes of work!";
-            MessageBox.Show(string.Format(msg, (int)TimeSpan.FromSeconds(_savedTimeCounter).TotalMinutes), "WOW!", MessageBoxButton.OK);
+            MessageBox.Show(window, string.Format(msg, (int)TimeSpan.FromSeconds(_savedTimeCounter).TotalMinutes), "WOW!", MessageBoxButton.OK);
+            
+            window.Close();
         }
 
         private void ExitApplication_Click(object sender, RoutedEventArgs e)
