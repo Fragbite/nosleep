@@ -1,4 +1,5 @@
-﻿using NoSleep.Core.EventArgs;
+﻿using Microsoft.Win32;
+using NoSleep.Core.EventArgs;
 using NoSleep.Core.Hooks;
 using NoSleep.Core.Simulators;
 using System;
@@ -28,35 +29,76 @@ namespace NoSleep
         Timer _noSleepTimer { get; set; }
         GlobalKeyboardHook _globalKeyboardHook { get; set; }
         GlobalMouseHook _globalMouseHook { get; set; }
-        int _inactivityTimeout = 90;
-        int _savedTimeCounter = 0;
-        bool _isSuspended = false;
+        int _inactivityTimeout { get; set; }
+        int _savedTimeCounter { get; set; }
+        bool _isSuspended { get; set; }
 
         public MainWindow()
         {
             InitializeComponent();
             Init();
+            Configure();
+            SubscribeToEvents();
+            StartTimers();
         }
 
         private void Init()
         {
             _inactivityTimer = new Timer();
+            _noSleepTimer = new Timer();
+            _globalKeyboardHook = new GlobalKeyboardHook();
+            _globalMouseHook = new GlobalMouseHook();
+        }
+
+        private void Configure()
+        {
+            _inactivityTimeout = 90;
+            _savedTimeCounter = 0;
+            _isSuspended = false;
+
             _inactivityTimer.Interval = TimeSpan.FromSeconds(_inactivityTimeout).TotalMilliseconds;
             _inactivityTimer.AutoReset = false;
-            _inactivityTimer.Elapsed += InactivityTimer_Elapsed;
 
-            _noSleepTimer = new Timer();
             _noSleepTimer.Interval = TimeSpan.FromSeconds(_inactivityTimeout).TotalMilliseconds;
             _noSleepTimer.AutoReset = true;
-            _noSleepTimer.Elapsed += NoSleepTimer_Elapsed;
-            
-            _globalKeyboardHook = new GlobalKeyboardHook();
-            _globalKeyboardHook.KeyboardPressed += GlobalKeyboardHook_KeyboardPressed;
+        }
 
-            _globalMouseHook = new GlobalMouseHook();
+        private void SubscribeToEvents()
+        {
+            _inactivityTimer.Elapsed += InactivityTimer_Elapsed;
+            _noSleepTimer.Elapsed += NoSleepTimer_Elapsed;
+            _globalKeyboardHook.KeyboardPressed += GlobalKeyboardHook_KeyboardPressed;
             _globalMouseHook.MouseAction += GlobalMouseHook_MouseAction;
 
+            SystemEvents.SessionSwitch += SystemEvents_SessionSwitch;
+        }
+
+        private void StartTimers()
+        {
             _inactivityTimer.Start();
+        }
+
+        private void SystemEvents_SessionSwitch(object sender, SessionSwitchEventArgs e)
+        {
+            switch (e.Reason)
+            {
+                case SessionSwitchReason.SessionLock:
+                    if (!_isSuspended)
+                    {
+                        _inactivityTimer.Stop();
+                        _noSleepTimer.Stop();
+                    }
+                    break;
+                case SessionSwitchReason.SessionUnlock:
+                    if (!_isSuspended)
+                    {
+                        _inactivityTimer.Start();
+                    }
+                    break;
+                case SessionSwitchReason.SessionLogoff:
+                    Application.Current.Shutdown();
+                    break;
+            }
         }
 
         private void GlobalMouseHook_MouseAction(object sender, GlobalMouseHookEventArgs e)
@@ -122,7 +164,6 @@ namespace NoSleep
             if (_isSuspended)
             {
                 _inactivityTimer.Start();
-                _noSleepTimer.Start();
                 UpdateToggleMenuItem("Suspend");
             }
             else
