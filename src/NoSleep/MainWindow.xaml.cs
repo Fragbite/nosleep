@@ -26,7 +26,6 @@ namespace NoSleep
     public partial class MainWindow : Window
     {
         Timer _inactivityTimer { get; set; }
-        Timer _noSleepTimer { get; set; }
         GlobalKeyboardHook _globalKeyboardHook { get; set; }
         GlobalMouseHook _globalMouseHook { get; set; }
         int _inactivityTimeout { get; set; }
@@ -45,7 +44,6 @@ namespace NoSleep
         private void Init()
         {
             _inactivityTimer = new Timer();
-            _noSleepTimer = new Timer();
             _globalKeyboardHook = new GlobalKeyboardHook();
             _globalMouseHook = new GlobalMouseHook();
         }
@@ -57,20 +55,17 @@ namespace NoSleep
             _isSuspended = false;
 
             _inactivityTimer.Interval = TimeSpan.FromSeconds(_inactivityTimeout).TotalMilliseconds;
-            _inactivityTimer.AutoReset = false;
-
-            _noSleepTimer.Interval = TimeSpan.FromSeconds(_inactivityTimeout).TotalMilliseconds;
-            _noSleepTimer.AutoReset = true;
+            _inactivityTimer.AutoReset = true;
         }
 
         private void SubscribeToEvents()
         {
             _inactivityTimer.Elapsed += InactivityTimer_Elapsed;
-            _noSleepTimer.Elapsed += NoSleepTimer_Elapsed;
             _globalKeyboardHook.KeyboardPressed += GlobalKeyboardHook_KeyboardPressed;
             _globalMouseHook.MouseAction += GlobalMouseHook_MouseAction;
 
             SystemEvents.SessionSwitch += SystemEvents_SessionSwitch;
+            SystemEvents.PowerModeChanged += SystemEvents_PowerModeChanged;
         }
 
         private void StartTimers()
@@ -78,26 +73,48 @@ namespace NoSleep
             _inactivityTimer.Start();
         }
 
+        private void SystemEvents_PowerModeChanged(object sender, PowerModeChangedEventArgs e)
+        {
+            switch (e.Mode)
+            {
+                case PowerModes.Suspend:
+                    HaltExecution_BySystem();
+                    break;
+                case PowerModes.Resume:
+                    ResumeExecution_BySystem();
+                    break;
+            }
+        }
+
         private void SystemEvents_SessionSwitch(object sender, SessionSwitchEventArgs e)
         {
             switch (e.Reason)
             {
                 case SessionSwitchReason.SessionLock:
-                    if (!_isSuspended)
-                    {
-                        _inactivityTimer.Stop();
-                        _noSleepTimer.Stop();
-                    }
+                    HaltExecution_BySystem();
                     break;
                 case SessionSwitchReason.SessionUnlock:
-                    if (!_isSuspended)
-                    {
-                        _inactivityTimer.Start();
-                    }
+                    ResumeExecution_BySystem();
                     break;
                 case SessionSwitchReason.SessionLogoff:
                     Application.Current.Shutdown();
                     break;
+            }
+        }
+
+        private void HaltExecution_BySystem()
+        {
+            if (!_isSuspended)
+            {
+                _inactivityTimer.Stop();
+            }
+        }
+
+        private void ResumeExecution_BySystem()
+        {
+            if (!_isSuspended)
+            {
+                _inactivityTimer.Start();
             }
         }
 
@@ -113,19 +130,11 @@ namespace NoSleep
 
         private void InactivityTimer_Elapsed(object sender, ElapsedEventArgs e)
         {
-            _inactivityTimer.Stop();
-            PreventSleep();
-            _noSleepTimer.Start();
-        }
-
-        private void NoSleepTimer_Elapsed(object sender, ElapsedEventArgs e)
-        {
             PreventSleep();
         }
-
+        
         private void ResetTimers()
         {
-            _noSleepTimer.Stop();
             _inactivityTimer.Stop();
             _inactivityTimer.Start();
         }
@@ -140,9 +149,6 @@ namespace NoSleep
         {
             _inactivityTimer.Stop();
             _inactivityTimer.Dispose();
-
-            _noSleepTimer.Stop();
-            _noSleepTimer.Dispose();
 
             if (_globalKeyboardHook != null)
             {
@@ -169,7 +175,6 @@ namespace NoSleep
             else
             {
                 _inactivityTimer.Stop();
-                _noSleepTimer.Stop();
                 UpdateToggleMenuItem("Resume");
             }
             _isSuspended = !_isSuspended;
