@@ -1,9 +1,10 @@
 ﻿using Microsoft.Win32;
-using NoSleep.Core.EventArgs;
 using NoSleep.Core.Hooks;
+using NoSleep.Core.Hooks.LastUserInput;
 using NoSleep.Core.Simulators;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -25,52 +26,60 @@ namespace NoSleep
     /// </summary>
     public partial class MainWindow : Window
     {
-        Timer _inactivityTimer { get; set; }
-        GlobalKeyboardHook _globalKeyboardHook { get; set; }
-        GlobalMouseHook _globalMouseHook { get; set; }
+        string _logHistory { get; set; }
+        TextBox _logWindow { get; set; }
+        Timer _loopTimer { get; set; }
         int _inactivityTimeout { get; set; }
+        int _loopInterval { get; set; }
         int _savedTimeCounter { get; set; }
         bool _isSuspended { get; set; }
 
         public MainWindow()
         {
             InitializeComponent();
+            SetupAndStartApplication();
+            SubscribeToSystemEvents();
+        }
+        
+        private void SetupAndStartApplication()
+        {
+            Log("Setting up & starting application");
+
             Init();
             Configure();
-            SubscribeToEvents();
+            SubscribeToApplicationEvents();
             StartTimers();
         }
 
         private void Init()
         {
-            _inactivityTimer = new Timer();
-            _globalKeyboardHook = new GlobalKeyboardHook();
-            _globalMouseHook = new GlobalMouseHook();
+            _loopTimer = new Timer();
         }
 
         private void Configure()
         {
-            _inactivityTimeout = 90;
-            _savedTimeCounter = 0;
+            _loopInterval = 30;
+            _inactivityTimeout = 85;
             _isSuspended = false;
 
-            _inactivityTimer.Interval = TimeSpan.FromSeconds(_inactivityTimeout).TotalMilliseconds;
-            _inactivityTimer.AutoReset = true;
+            _loopTimer.Interval = TimeSpan.FromSeconds(_loopInterval).TotalMilliseconds;
+            _loopTimer.AutoReset = true;
         }
 
-        private void SubscribeToEvents()
+        private void SubscribeToApplicationEvents()
         {
-            _inactivityTimer.Elapsed += InactivityTimer_Elapsed;
-            _globalKeyboardHook.KeyboardPressed += GlobalKeyboardHook_KeyboardPressed;
-            _globalMouseHook.MouseAction += GlobalMouseHook_MouseAction;
-
-            SystemEvents.SessionSwitch += SystemEvents_SessionSwitch;
-            SystemEvents.PowerModeChanged += SystemEvents_PowerModeChanged;
+            _loopTimer.Elapsed += InactivityTimer_Elapsed;
         }
 
         private void StartTimers()
         {
-            _inactivityTimer.Start();
+            _loopTimer.Start();
+        }
+
+        private void SubscribeToSystemEvents()
+        {
+            SystemEvents.SessionSwitch += SystemEvents_SessionSwitch;
+            SystemEvents.PowerModeChanged += SystemEvents_PowerModeChanged;
         }
 
         private void SystemEvents_PowerModeChanged(object sender, PowerModeChangedEventArgs e)
@@ -104,60 +113,72 @@ namespace NoSleep
 
         private void HaltExecution_BySystem()
         {
+            Log("System is going into suspended mode");
+
             if (!_isSuspended)
             {
-                _inactivityTimer.Stop();
+                HaltExecution();
             }
+        }
+
+        private void HaltExecution()
+        {
+            Log("Halting application execution");
+
+            StopApplication();
         }
 
         private void ResumeExecution_BySystem()
         {
+            Log("System is resuming execution from suspended mode");
+
             if (!_isSuspended)
             {
-                _inactivityTimer.Start();
+                ResumeExecution();
             }
         }
 
-        private void GlobalMouseHook_MouseAction(object sender, GlobalMouseHookEventArgs e)
+        private void ResumeExecution()
         {
-            ResetTimers();
-        }
+            Log("Resuming application execution");
 
-        private void GlobalKeyboardHook_KeyboardPressed(object sender, GlobalKeyboardHookEventArgs e)
-        {
-            ResetTimers();
+            SetupAndStartApplication();
         }
 
         private void InactivityTimer_Elapsed(object sender, ElapsedEventArgs e)
         {
-            PreventSleep();
+            var idleTickTimeout = GetLastUserInput.GetIdleTickCount();
+            var inactivityTimeout = TimeSpan.FromMilliseconds(idleTickTimeout).TotalSeconds;   
+            if (inactivityTimeout > _inactivityTimeout)
+            {
+                PreventSleep();
+            }
         }
         
         private void ResetTimers()
         {
-            _inactivityTimer.Stop();
-            _inactivityTimer.Start();
+            _loopTimer.Stop();
+            _loopTimer.Start();
         }
 
         private void PreventSleep()
         {
+            Log("No activity, simulating keypress");
+
             _savedTimeCounter += _inactivityTimeout;
             KeyboardSimulator.SimulateKeypress();
         }
 
         private void StopApplication()
         {
-            _inactivityTimer.Stop();
-            _inactivityTimer.Dispose();
+            Log("Stopping timers and releasing hooks");
 
-            if (_globalKeyboardHook != null)
-            {
-                _globalKeyboardHook.Dispose();
-            }
-            if (_globalMouseHook != null)
-            {
-                _globalMouseHook.Dispose();
-            }
+            _loopTimer.Stop();
+            _loopTimer.Elapsed -= InactivityTimer_Elapsed;
+            _loopTimer.Dispose();
+
+            SystemEvents.SessionSwitch -= SystemEvents_SessionSwitch;
+            SystemEvents.PowerModeChanged -= SystemEvents_PowerModeChanged;
         }
 
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
@@ -169,12 +190,12 @@ namespace NoSleep
         {
             if (_isSuspended)
             {
-                _inactivityTimer.Start();
+                ResumeExecution();
                 UpdateToggleMenuItem("Suspend");
             }
             else
             {
-                _inactivityTimer.Stop();
+                HaltExecution();
                 UpdateToggleMenuItem("Resume");
             }
             _isSuspended = !_isSuspended;
@@ -186,31 +207,67 @@ namespace NoSleep
             var menuItem = firstItem as MenuItem;
             menuItem.Header = header;
         }
-
-        private void ShowStats_Click(object sender, RoutedEventArgs e)
+        
+        private void ShowLog_Click(object sender, RoutedEventArgs e)
         {
-            Window window = new Window()
+            var window = new Window()
             {
-                WindowStyle = WindowStyle.None,
-                WindowState = System.Windows.WindowState.Maximized,
-                Background = System.Windows.Media.Brushes.Transparent,
-                AllowsTransparency = true,
+                WindowStyle = WindowStyle.ToolWindow,
+                WindowState = System.Windows.WindowState.Normal,
+                Title = "Log view",
+                Width = 500,
+                Height = 500,
+                ResizeMode = System.Windows.ResizeMode.CanResizeWithGrip,
+                Background = System.Windows.Media.Brushes.WhiteSmoke,
+                AllowsTransparency = false,
                 ShowInTaskbar = false,
                 ShowActivated = true,
                 Topmost = true
             };
 
-            window.Show();
+            _logWindow = new TextBox()
+            {
+                HorizontalAlignment = System.Windows.HorizontalAlignment.Stretch,
+                VerticalAlignment = System.Windows.VerticalAlignment.Stretch,
+                HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
+                VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                Text = _logHistory
+            };
 
-            var msg = "I've just saved you from {0} minutes of work!";
-            MessageBox.Show(window, string.Format(msg, (int)TimeSpan.FromSeconds(_savedTimeCounter).TotalMinutes), "WOW!", MessageBoxButton.OK);
-            
-            window.Close();
+            window.Content = _logWindow;
+            window.Closing += window_Closing;
+
+            window.Show();
+        }
+
+        void window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
+        {
+            _logWindow = null;
         }
 
         private void ExitApplication_Click(object sender, RoutedEventArgs e)
         {
             Application.Current.Shutdown();
+        }
+
+        private void Log(string msg)
+        {
+            if (Debugger.IsAttached)
+            {
+                Console.WriteLine(msg);
+            }
+
+            _logHistory += msg + Environment.NewLine;
+            if (_logWindow != null)
+            {
+                _logWindow.AppendText(msg + Environment.NewLine);
+                _logWindow.ScrollToEnd();
+            }
+        }
+
+        private void Log(string format, params string[] values)
+        {
+            Log(string.Format(format, values));
         }
     }
 }
