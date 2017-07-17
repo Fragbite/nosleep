@@ -171,14 +171,11 @@ namespace NoSleep
 
         private void StopApplication()
         {
-            Log("Stopping timers and releasing hooks");
+            Log("Stopping timers");
 
             _loopTimer.Stop();
             _loopTimer.Elapsed -= InactivityTimer_Elapsed;
             _loopTimer.Dispose();
-
-            SystemEvents.SessionSwitch -= SystemEvents_SessionSwitch;
-            SystemEvents.PowerModeChanged -= SystemEvents_PowerModeChanged;
         }
 
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
