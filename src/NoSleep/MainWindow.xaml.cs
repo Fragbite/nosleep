@@ -234,6 +234,8 @@ namespace NoSleep
             window.Content = _logWindow;
             window.Closing += window_Closing;
 
+            _logWindow.ScrollToEnd();
+
             window.Show();
         }
 
